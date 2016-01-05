@@ -1,4 +1,4 @@
-#' reclassModis
+#' getSnowProbability
 #'
 #' This function gets the snow probability based on the other data
 #'

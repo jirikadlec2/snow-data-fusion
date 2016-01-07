@@ -9,10 +9,10 @@
 #' @return a SpatialPointsDataFrame with the tracks.
 
 getTracks <- function(selected.date, UTM=TRUE) {
-  
+
   out_tracks_strava <- data.frame()
   out_tracks_garmin <- data.frame()
-  
+
   new_track_file <- "strava_tracks_saved.shp"
   if (!file.exists(new_track_file)) {
     resource_id <- "7d8751fef6234ae794b4b1ca31156b8f"
@@ -27,7 +27,7 @@ getTracks <- function(selected.date, UTM=TRUE) {
     tracks <- readOGR(shpfolder, shpname, stringsAsFactors = FALSE)
     writeOGR(tracks, ".", "strava_tracks_saved", driver="ESRI Shapefile")
   } else {
-    tracks <- readOGR(".", "strava_tracks_saved")
+    tracks <- readOGR(".", "strava_tracks_saved", stringsAsFactors = FALSE)
   }
   Ntracks <- length(which(tracks$begdate == selected.date))
   if (Ntracks > 0) {
@@ -42,7 +42,7 @@ getTracks <- function(selected.date, UTM=TRUE) {
   } else {
     out_tracks_strava <- data.frame()
   }
-  
+
   garmin_track_file <- "garmin_tracks_saved.shp"
   if (!file.exists(garmin_track_file)) {
     resource_id <- "d96b094c6afa4e8fb147e3aa8c86a689"
@@ -57,7 +57,7 @@ getTracks <- function(selected.date, UTM=TRUE) {
     garmin_tracks <- readOGR(shpfolder, shpname, stringsAsFactors = FALSE)
     writeOGR(garmin_tracks, ".", "garmin_tracks_saved", driver="ESRI Shapefile")
   } else {
-    garmin_tracks <- readOGR(".", "garmin_tracks_saved")
+    garmin_tracks <- readOGR(".", "garmin_tracks_saved", stringsAsFactors=FALSE)
   }
   NtracksGarmin <- length(which(garmin_tracks$begdate == selected.date))
   if (NtracksGarmin > 0) {
@@ -71,13 +71,13 @@ getTracks <- function(selected.date, UTM=TRUE) {
   } else {
     out_tracks_garmin <- data.frame()
   }
-  
+
   # combining them together (garmin+strava)
   out_tracks_strava$date <- NA
   out_tracks_strava$datetime <- NA
   out_tracks_strava$month <- NA
   out_tracks_strava$weekday <- NA
   out_tracks_combined <- rbind(out_tracks_garmin, out_tracks_strava)
-  
+
   return(out_tracks_combined)
 }

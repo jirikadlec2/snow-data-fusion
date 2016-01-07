@@ -11,7 +11,7 @@
 #' @return various statistics data
 #' it has columns lat, lon, snodep and present.
 #' present is 0 for bare ground, 1 for snow (no data are excluded)
-#' 
+#'
 getStatistics <- function() {
 
   setwd("C:/jiri/Dropbox/PHD/crowdsourcing/data/garmin")
@@ -26,12 +26,12 @@ getStatistics <- function() {
   garmin_tracks <- readOGR(".", "garmin_tracks_2012-2015", stringsAsFactors=FALSE)
   garmin_tracks$mean_elev <- NA
   all_elevations <- c()
-  
+
   setwd("C:/temp/data/garmin")
   i <- 1
   for(i in 1:nrow(garmin_tracks)) {
     print(i)
-  
+
     tcx <- garmin_tracks$tcx[i]
     elevs <- parseTcxElevations(tcx)
     all_elevations <- c(all_elevations, elevs)
@@ -44,7 +44,7 @@ getStatistics <- function() {
   valid_elevations <- all_elevations[all_elevations > 115 & all_elevations < 1605]
   elevations <- data.frame(elevation=valid_elevations)
   library(ggplot2)
-  ggplot(data=elevations, aes(elevations$elevation)) + 
+  ggplot(data=elevations, aes(elevations$elevation)) +
     geom_histogram(breaks=seq(100, 1600, by=100), fill="darkgray", col="black") +
     xlab("elevation (m)") +
     ylab("number of track points")
@@ -52,7 +52,7 @@ getStatistics <- function() {
 
   garmin_utm <- spTransform(garmin_tracks, CRS("+proj=utm +zone=33"))
   plot(garmin_utm, add=TRUE)
-  
+
   plot(garmin_utm)
 
   ###################################################################
@@ -72,7 +72,7 @@ getStatistics <- function() {
   hist(reportsUTM$elevation)
 
   report_elevation <- data.frame(elevation=reportsUTM$elevation)
-  ggplot(data=report_elevation, aes(report_elevation$elevation)) + 
+  ggplot(data=report_elevation, aes(report_elevation$elevation)) +
     geom_histogram(breaks=seq(100, 1600, by=100), fill="darkgray", col="black") +
     xlab("elevation (m)") +
     ylab("number of snow reports") +
@@ -83,13 +83,13 @@ getStatistics <- function() {
 
   names(reports) <- c("date", "time", "site", "snowdepth")
   head(reports$date)
-  
+
   reports2 <- data.frame(reports$date, reports$time, reports$site, reports$snowdepth, stringsAsFactors=FALSE)
   reports_daily <- aggregate(reports.snowdepth~reports.date, data=reports2, length)
   reports_daily$date <- as.Date(reports_daily$reports.date)
   plot(reports_daily$date, reports_daily$reports.snowdepth, type="l")
   qplot(reports.date, reports.snowdepth, data=reports_daily, geom="line", ylab="number of reports")
-  
+
   reports2$date = as.Date(reports2$reports.date)
   reports2$month <- strftime(reports2$date, format="%m")
 
@@ -99,7 +99,7 @@ getStatistics <- function() {
   reports_monthly_sum <- sum(reports_monthly2$reports.snowdepth)
   reports_monthly2$percent <- 100 * (reports_monthly2$reports.snowdepth / reports_monthly_sum)
   barplot(reports_monthly2$reports.snowdepth, names.arg=reports_monthly2$month2, ylab="Number of reports")
-         
+
   #garmin tracks by day of week
   reports2$weekday <- strftime(reports2$date, "%w")
   reports_weekday <- aggregate(reports.snowdepth~weekday, data=reports2, length)
@@ -109,7 +109,7 @@ getStatistics <- function() {
   # elevation distribution plot: stations, tracks, reports
   report_elev_sorted <- sort(report_elevation$elevation)
   track_elev_sorted <- sort(all_elevations)
-  
+
   elev_breaks <- seq(0, 1600, by=100)
   track_elev_cut <- cut(track_elev_sorted, elev_breaks, right=FALSE)
   track_elev_freq <- table(track_elev_cut)
@@ -119,7 +119,7 @@ getStatistics <- function() {
   track_elev_percent <- (track_elev_freq / track_elev_sum) * 100
   track_elev_cumpercent <- cumsum(track_elev_percent)
   plot(seq(100, 1600, by=100), track_elev_cumpercent, type="l", xlab="elevation (m)", ylab="cumulative frequency (%)")
-  
+
   # elevation distribution: reports
   reports_elev_cut <- cut(report_elev_sorted, elev_breaks, right=FALSE)
   reports_elev_freq <- table(reports_elev_cut)
@@ -133,7 +133,7 @@ getStatistics <- function() {
   proj4string(stations) <- "+proj=longlat"
   stations_utm <- spTransform(stations, CRS("+proj=utm +zone=33"))
   stations_utm$elevation <- extract(dem, stations_utm)
-  
+
   stations_elev_sorted <- sort(stations_utm$elevation)
   stations_elev_cut <- cut(stations_elev_sorted, elev_breaks, right=FALSE)
   stations_elev_freq <- table(stations_elev_cut)
@@ -143,4 +143,6 @@ getStatistics <- function() {
   lines(seq(100, 1600, by=100), stations_elev_cumpercent, col="red", lty=2)
 
   legend("bottomright", c("tracks", "reports", "stations"), col=c("black", "gray", "red"), lty=c(1, 1, 2))
+
+  garmin_tracks_daily <- aggregate(tcx~begdate, data=garmin_tracks, length)
 }

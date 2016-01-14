@@ -6,18 +6,20 @@
 #' @import raster
 #' @import rgdal
 #' @import PresenceAbsence
-#' @param cloud_file the file with cloud statistics
+#' @import RColorBrewer
+#' @param cloudy_days a vector of selected cloudy dates for validation
+#' @param sunny_days a vector of selected cloud-free dates for validation
 #' @param dataFolder the data folder with MODIS rasters
 #' @return a data frame vector with sensitivity, specificity,
 #' false positive, false negative
 
-runValidation <- function(cloud_file, dataFolder) {
+runValidation <- function(cloudy_days, sunny_days, dataFolder) {
   validation_result <- data.frame()
   #cloud_file <- "C:/jiri/Dropbox/PHD/crowdsourcing/data/modis/cloud_percent.csv"
 
-  cloud_table <- read.csv(cloud_file, header=TRUE, stringsAsFactors = FALSE)
-  sunny_days <- getSampleDates(cloud_table, N=10, minCloud = 0, maxCloud = 25, maxMonth = 4, maxDay = 15, minMonth = 11, minDay = 15)
-  cloudy_days <- getSampleDates(cloud_table, N=10, minCloud = 75, maxCloud = 100, maxMonth = 4, maxDay = 15, minMonth = 11, minDay = 15)
+  #cloud_table <- read.csv(cloud_file, header=TRUE, stringsAsFactors = FALSE)
+  #sunny_days <- getSampleDates(cloud_table, N=10, minCloud = 0, maxCloud = 25, maxMonth = 4, maxDay = 15, minMonth = 11, minDay = 15)
+  #cloudy_days <- getSampleDates(cloud_table, N=10, minCloud = 75, maxCloud = 100, maxMonth = 4, maxDay = 15, minMonth = 11, minDay = 15)
 
   studyArea <- getCzechia()
   originalDate <- sunny_days[1]
@@ -32,15 +34,26 @@ runValidation <- function(cloud_file, dataFolder) {
         originalFile <- paste(dataFolder, "/", "modis", originalDate, ".tif", sep="")
         cloudyFile <- paste(dataFolder, "/", "modis", cloudyDate, ".tif", sep="")
 
+        # if files don't exist, download them
+        if (!file.exists(originalFile)) {
+          getModis(originalDate, dataFolder)
+        }
+        if (!file.exists(cloudyFile)) {
+          getModis(cloudyDate, dataFolder)
+        }
+
+        # for plotting of snow colors
+        snow_colors <- c("beige", "blue", "gray")
+
         original <- raster(originalFile)
         cloudy <- raster(cloudyFile)
         originalR <- reclassModis(original)
         cloudyR <- reclassModis(cloudy)
         plot(cloudyR)
-        snow_colors <- c("beige", "blue", "gray")
+
         plot(cloudyR, col=snow_colors, axes=FALSE, box=FALSE, legend=FALSE)
-        legend_x = bbox(originalR_cze)[1,1]+100000
-        legend_y = bbox(originalR_cze)[2,2]
+        legend_x = bbox(originalR)[1,1]+100000
+        legend_y = bbox(originalR)[2,2]
         legend(x=legend_x, y=legend_y, legend = c("Snow-free", "Snow", "Cloud"),
                fill = snow_colors, cex=0.7, horiz=TRUE)
         plot(studyArea, add=TRUE)
@@ -57,7 +70,6 @@ runValidation <- function(cloud_file, dataFolder) {
                fill = c("gray"), cex=0.7, horiz=TRUE)
 
         #mask - czechia for display
-        snow_colors <- c("beige", "blue", "gray")
         originalR_cze <- mask(originalR, studyArea)
         par(mar=c(0,0,0,0))
         plot(originalR_cze, col=snow_colors, axes=FALSE, box=FALSE, legend=FALSE)
@@ -69,7 +81,6 @@ runValidation <- function(cloud_file, dataFolder) {
         modisCloud <- imposeCloud(originalR, cloudyR)
         combinedR_cze <- mask(modisCloud, studyArea)
         par(mar=c(0,0,0,0))
-        snow_colors <- c("beige", "blue", "gray")
         plot(combinedR_cze, col=snow_colors, axes=FALSE, box=FALSE, legend=FALSE)
         legend_x = bbox(originalR_cze)[1,1]+100000
         legend_y = bbox(originalR_cze)[2,2]
@@ -83,7 +94,6 @@ runValidation <- function(cloud_file, dataFolder) {
 
         # plot also with the stations, points, tracks
         par(mar=c(0,0,0,0))
-        snow_colors <- c("beige", "blue", "gray")
         plot(combinedR_cze, col=snow_colors, axes=FALSE, box=FALSE, legend=FALSE)
         lines(tracks, col="red")
         points(stations, pch=1)
@@ -133,20 +143,23 @@ runValidation <- function(cloud_file, dataFolder) {
         probTest <- mask(probTest, studyArea)
         probReal <- mask(probReal, studyArea)
 
+        #remove cloud-covered areas from probReal: we don't test for them
+        probReal[probReal == 2] <- 0
+
         testDF <- as.data.frame(probTest)
         realDF <- as.data.frame(probReal)
         comparisonDF <- cbind(testDF, realDF)
         validationDF <- comparisonDF[complete.cases(comparisonDF),]
 
         predictedFile <- paste("predicted", originalDate, cloudyDate, "r.tif", sep="_")
-        writeRaster(prob, predictedFile)
+        writeRaster(prob, paste(dataFolder, predictedFile, sep="/"))
 
         validation <- data.frame(id=1:nrow(validationDF), observed=validationDF[,2],
                                  predicted=validationDF[,1])
         rocFile <- paste("roc", originalDate, cloudyDate, "r.png", sep="_")
 
         #to save PNG image of the ROC file
-        png(rocFile)
+        png(paste(dataFolder, rocFile, sep="/"))
         auc.roc.plot(validation)
         dev.off()
 
@@ -161,11 +174,14 @@ runValidation <- function(cloud_file, dataFolder) {
         kappa_full <- Kappa(confmat)
         kappa <- kappa_full$Kappa
         AUC <- auc(validation, st.dev=FALSE)
+        commissionError <- falsePos / (falsePos + sensitivity)
+        omissionError <- falseNeg / (falseNeg + specificity)
 
         result <- data.frame(originalDate, cloudyDate,
                              sensitivity, specificity, falsePos, falseNeg,
                              PCC, PCC.sd = PCC_full$PCC.sd, kappa,
-                             kappa.sd = kappa_full$Kappa.sd, AUC)
+                             kappa.sd = kappa_full$Kappa.sd, AUC,
+                             commissionError, omissionError)
 
 
 
@@ -180,8 +196,9 @@ runValidation <- function(cloud_file, dataFolder) {
 
     }
   }
+  validation_result_file <- paste(dataFolder, "/validation", Sys.Date(), ".csv",sep="")
   write.table(validation_result,
-              "C:/jiri/Dropbox/PHD/crowdsourcing/data/validation/validation2015-10-21b.csv",
+              validation_result_file,
               row.names=FALSE, col.names=TRUE, sep=",")
 
   #make a validation summary
@@ -197,20 +214,16 @@ runValidation <- function(cloud_file, dataFolder) {
   AUCmean <- aggregate(AUC~originalDate, data=vsummary1, FUN=mean)
   AUCmax <- aggregate(AUC~originalDate, data=vsummary1, FUN=max)
 
-  validation_result_info <- data.frame(date=validation_info$selectedDate,
-                                       percCloud = validation_info$PercCloud,
-                                       Nstations=validation_info$Nstations,
-                                       Nreports=validation_info$Nreports,
-                                       Ntracks=validation_info$Ntracks,
+  validation_result_info <- data.frame(date=vsummaryRS$originalDate,
                                        pcc.min=PCCmin$PCC,
                                        pcc.mean=PCCmean$PCC,
                                        pcc.max=PCCmax$PCC,
                                        auc.min=AUCmin$AUC,
                                        auc.mean=AUCmean$AUC,
                                        auc.max=AUCmax$AUC)
-  write.table(validation_result_info,
-              "C:/jiri/Dropbox/PHD/crowdsourcing/data/validation/validation-summary_2015-10-21.csv",
-              row.names=FALSE, col.names=TRUE, sep=",")
+
+  validation_summary_file <- paste(dataFolder, "/validation-summary", Sys.Date(), ".csv",sep="")
+  write.table(validation_result_info, validation_summary_file, row.names=FALSE, col.names=TRUE, sep=",")
 
   #make boxplot
   vsummary1$trial <- rep(1:10, each=10)

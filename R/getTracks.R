@@ -24,10 +24,10 @@ getTracks <- function(selected.date, UTM=TRUE) {
     shpfile <- res[res.shp]
     shpfolder <- substr(shpfile, 1, nchar(shpfile) - nchar(basename(shpfile)) - 1)
     shpname <- substr(basename(shpfile), 1, nchar(basename(shpfile)) - 4)
-    tracks <- readOGR(shpfolder, shpname, stringsAsFactors = FALSE)
+    tracks <- readOGR(shpfolder, shpname, stringsAsFactors = FALSE, verbose = FALSE)
     writeOGR(tracks, ".", "strava_tracks_saved", driver="ESRI Shapefile")
   } else {
-    tracks <- readOGR(".", "strava_tracks_saved", stringsAsFactors = FALSE)
+    tracks <- readOGR(".", "strava_tracks_saved", stringsAsFactors = FALSE, verbose = FALSE)
   }
   Ntracks <- length(which(tracks$begdate == selected.date))
   if (Ntracks > 0) {
@@ -57,7 +57,7 @@ getTracks <- function(selected.date, UTM=TRUE) {
     garmin_tracks <- readOGR(shpfolder, shpname, stringsAsFactors = FALSE)
     writeOGR(garmin_tracks, ".", "garmin_tracks_saved", driver="ESRI Shapefile")
   } else {
-    garmin_tracks <- readOGR(".", "garmin_tracks_saved", stringsAsFactors=FALSE)
+    garmin_tracks <- readOGR(".", "garmin_tracks_saved", stringsAsFactors=FALSE, verbose = FALSE)
   }
   NtracksGarmin <- length(which(garmin_tracks$begdate == selected.date))
   if (NtracksGarmin > 0) {
@@ -73,11 +73,22 @@ getTracks <- function(selected.date, UTM=TRUE) {
   }
 
   # combining them together (garmin+strava)
-  out_tracks_strava$date <- NA
-  out_tracks_strava$datetime <- NA
-  out_tracks_strava$month <- NA
-  out_tracks_strava$weekday <- NA
-  out_tracks_combined <- rbind(out_tracks_garmin, out_tracks_strava)
+  out_tracks_combined <- data.frame()
+  if (nrow(out_tracks_strava) > 0) {
+    out_tracks_strava$date <- NA
+    out_tracks_strava$datetime <- NA
+    out_tracks_strava$month <- NA
+    out_tracks_strava$weekday <- NA
+  }
+  if (nrow(out_tracks_garmin) > 0 & nrow(out_tracks_strava) > 0) {
+    out_tracks_combined <- rbind(out_tracks_garmin, out_tracks_strava)
+  } else {
+    if(nrow(out_tracks_garmin) > 0) {
+      out_tracks_combined <- out_tracks_garmin
+    } else {
+      out_tracks_combined <- out_tracks_strava
+    }
+  }
 
   return(out_tracks_combined)
 }

@@ -50,6 +50,6 @@ getStations <- function(selected.date) {
   d$present <- d$snodep > 0
 
   coordinates(d) <- ~lon+lat
-  projection(d) <- CRS("+proj=longlat")
+  proj4string(d) <- CRS("+proj=longlat")
   return(d)
 }

@@ -1,10 +1,11 @@
-#' getModis
+ #' getModis
 #'
 #' This function gets the MODIS raster from the Cryoland WCS dataset
 #'
 #' @import XML
 #' @import httr
 #' @param selected.date The date of the satellite observation
+#' @param dataFolder The directory where to save the raster files
 #' @param west Optional parameter: The west longitude of the geographic
 #'  bounding box in decimal degrees. Allowed values are between -180.0 and +180.0
 #' @param south Optional parameter: The south latitude of the geographic
@@ -15,7 +16,7 @@
 #'  bounding box in decimal degrees. Allowed values are between -90.0 and +90.0
 #' @return a name of the saved raster file
 
-getModis <- function(selected.date, west, south, east, north) {
+getModis <- function(selected.date, dataFolder=".", west=12.0, south=48.5, east=18.9, north=51.1) {
   base_uri <- "http://neso.cryoland.enveo.at/cryoland/ows?Service=WCS"
   #start date, end date
   start_date_t <- strptime(selected.date, "%Y-%m-%d")
@@ -41,7 +42,7 @@ getModis <- function(selected.date, west, south, east, north) {
                     '&subsettingCRS=http://www.opengis.net/def/crs/EPSG/0/4326',
                     '&OutputCRS=http://www.opengis.net/def/crs/EPSG/0/32633', sep="")
 
-  ras_file <- paste("modis", start_date, ".tif", sep="")
+  ras_file <- paste(dataFolder, "/modis", start_date, ".tif", sep="")
   GET(data_uri, write_disk(ras_file, overwrite=TRUE))
   return(ras_file)
 }

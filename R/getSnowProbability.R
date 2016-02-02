@@ -17,8 +17,17 @@ getSnowProbability <- function(modis, stations, reports, tracks, exponent = 3) {
   modis.present[modis.present == 0] <- NA
   modis.absent <- modis == 0 | modis == 100
   modis.absent[modis.absent == 0] <- NA
-  d.modis.abs <- distance(modis.absent)
-  d.modis.prez <- distance(modis.present)
+
+  #need to check that modis has some cloud-free pixels
+  use_modis <- TRUE
+  if (is.infinite(cellStats(modis.absent, "max"))) {
+    use_modis <- FALSE
+  }
+
+  if (use_modis) {
+    d.modis.abs <- distance(modis.absent)
+    d.modis.prez <- distance(modis.present)
+  }
 
   #stations
   stations_utm <- spTransform(stations, CRS("+proj=utm +zone=33"))
@@ -36,6 +45,9 @@ getSnowProbability <- function(modis, stations, reports, tracks, exponent = 3) {
     d.report.prez <- distanceFromPoints(modis, reports.prez)
     inv.d.report.abs <- 1 / (d.report.abs^exponent)
     inv.d.report.prez <- 1 / (d.report.prez^exponent)
+  } else {
+    inv.d.report.abs <- modis * 0
+    inv.d.report.prez <- modis * 0
   }
 
   #tracks
@@ -44,29 +56,27 @@ getSnowProbability <- function(modis, stations, reports, tracks, exponent = 3) {
     track.ras <- rasterize(tracks, modis)
     d.track.prez <- distance(track.ras)
     inv.d.track.prez <- 1 / (d.track.prez^exponent)
+  } else {
+    inv.d.track.prez <- modis * 0
   }
 
-  #inverse distance
-  inv.d.modis.abs <- 1/(d.modis.abs^exponent)
-  inv.d.modis.prez <- 1/(d.modis.prez^exponent)
+  #inverse distance - modis
+  if (use_modis) {
+    inv.d.modis.abs <- 1/(d.modis.abs^exponent)
+    inv.d.modis.prez <- 1/(d.modis.prez^exponent)
+  } else {
+    inv.d.modis.abs <- modis * 0
+    inv.d.modis.prez <- modis * 0
+  }
+
+  #inverse distance - stations
   inv.d.station.abs <- 1 /(d.station.abs^exponent)
   inv.d.station.prez <- 1 / (d.station.prez^exponent)
-  
-
 
   #weighed averages
-  if (nrow(tracks) > 0) {
-    prez.conf <- inv.d.modis.prez + inv.d.station.prez + inv.d.report.prez + inv.d.track.prez
-    prez.abs.conf <- inv.d.modis.abs + inv.d.station.abs + inv.d.report.abs + inv.d.modis.prez + inv.d.station.prez + inv.d.report.prez + inv.d.track.prez
-  } else if (nrow(reports) > 0) {
-    prez.conf <- inv.d.modis.prez + inv.d.station.prez + inv.d.report.prez
-    prez.abs.conf <- inv.d.modis.abs + inv.d.station.abs + inv.d.report.abs + inv.d.modis.prez + inv.d.station.prez + inv.d.report.prez
-  } else {
-    prez.conf <- inv.d.modis.prez + inv.d.station.prez
-    prez.abs.conf <- inv.d.modis.abs + inv.d.station.abs + inv.d.modis.prez + inv.d.station.prez
-  }
+  prez.conf <- inv.d.modis.prez + inv.d.station.prez + inv.d.report.prez + inv.d.track.prez
+  prez.abs.conf <- inv.d.modis.abs + inv.d.station.abs + inv.d.report.abs + inv.d.modis.prez + inv.d.station.prez + inv.d.report.prez + inv.d.track.prez
   conf <- prez.conf / prez.abs.conf
-  cnan <- is.na(conf)
   conf[is.na(conf)] <- 1
 
   return(conf)

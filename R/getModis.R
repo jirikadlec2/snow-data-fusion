@@ -1,4 +1,4 @@
- #' getModis
+#' getModis
 #'
 #' This function gets the MODIS raster from the Cryoland WCS dataset
 #'
@@ -14,7 +14,7 @@
 #'  bounding box in decimal degrees. Allowed values are between -180.0 and +180.0
 #' @param north Optional parameter: The north latitude of the geographic
 #'  bounding box in decimal degrees. Allowed values are between -90.0 and +90.0
-#' @return a name of the saved raster file
+#' @return a MODIS raster object
 
 getModis <- function(selected.date, dataFolder=".", west=12.0, south=48.5, east=18.9, north=51.1) {
   base_uri <- "http://neso.cryoland.enveo.at/cryoland/ows?Service=WCS"
@@ -29,7 +29,7 @@ getModis <- function(selected.date, dataFolder=".", west=12.0, south=48.5, east=
                         '&EOID=daily_FSC_PanEuropean_Optical',
                         '&subset=phenomenonTime("', start_date,'","', end_date, '")', sep="")
   coverage_resp <- GET(metadata_uri)
-  doc <- content(coverage_resp)
+  doc <- xmlParse(coverage_resp)
   ns <- c(xsd="http://www.w3.org/2001/XMLSchema",
           xsi="http://www.w3.org/2001/XMLSchema-instance",
           wcs="http://www.opengis.net/wcs/2.0")

@@ -6,11 +6,12 @@
 #' @import httr
 #' @import sp
 #' @param selected.date The date of the satellite observation
+#' @param UTM get the result in UTM or in long/lat
 #' @return a SpatialPointsDataFrame with the stations.
 #' it has columns lat, lon, snodep and present.
 #' present is 0 for bare ground, 1 for snow (no data are excluded)
 
-getStations <- function(selected.date) {
+getStations <- function(selected.date, UTM=TRUE) {
   st_uri <- "http://hydrodata.info/api/sites?var=snih"
   vals_uri <- "http://hydrodata.info/api/values"
   stations <- read.table(st_uri, sep="\t", header=TRUE, stringsAsFactors = FALSE)
@@ -51,5 +52,11 @@ getStations <- function(selected.date) {
 
   coordinates(d) <- ~lon+lat
   proj4string(d) <- CRS("+proj=longlat")
-  return(d)
+
+  if (UTM) {
+    d2 <- spTransform(d, "+proj=utm +zone=33")
+    return(d2)
+  } else {
+    return(d)
+  }
 }

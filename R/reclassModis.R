@@ -4,15 +4,17 @@
 #'
 #' @import raster
 #' @param modis The original modis raster object
+#' @param zero_threshold the threshold for considering pixel as bare
 #' @return the reclassified modis raster object
 
-reclassModis <- function(modis) {
+reclassModis <- function(modis, zero_threshold=10) {
   #assign 201 to snowy pixels
   modis[modis > 100] <- 201
 
   #assign 200 to bare pixels
   modis[modis == 100] <- 200
   modis[modis == 0] <- 200
+  modis[modis < zero_threshold] <- 200
 
   #assign 202 to cloudy pixels
   modis[modis < 200] <- 202

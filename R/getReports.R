@@ -12,43 +12,44 @@
 #' present is 0 for bare ground, 1 for snow (no data are excluded)
 
 getReports <- function(selected.date, UTM=TRUE) {
-  resource_id <- "d2d47cfe84be4bc9ba3352eec7ceb57e"
-  zip_file <- "volunteer.zip"
-  resource_uri <- paste("http://hydroshare.org/hsapi/resource/", resource_id, sep="")
-  GET(resource_uri, write_disk(zip_file, overwrite=TRUE))
-  res <- unzip(zip_file)
-  res.csv <- grepl("*.csv", res)
-  csvfile <- res[res.csv]
 
-  # get data from hydroshare unzipped file
-  volunteer.data <- read.csv(csvfile, header=TRUE, stringsAsFactors = FALSE)
-  names(volunteer.data) <- c("date", "time", "lat", "lon",
-                             "site", "snow_depth_cm")
+  url <- "http://www.in-pocasi.cz/pocasi-u-vas/seznam.php?historie="
+  url <- paste(url, strftime(selected.date, "%m-%d-%Y"), sep="")
 
-  # extract values for spedific date
-  numSelected <- length(which(volunteer.data$date == selected.date))
+  obsdata <- GET(url)
 
-  if (numSelected > 0) {
+  html <- htmlParse(obsdata)
+  refs <- xpathSApply(html, "//a", xmlValue)
+  f <- xpathSApply(html, "//a[@class='tooltip']", xmlValue)
+  fb <- xpathSApply(html, "//a[@class='tooltip']//b", xmlValue)
+  fbs <- xpathSApply(html, "//a[@class='tooltip']//strong", xmlValue)
+  hrefs <- xpathSApply(html, "//a[@class='tooltip']", xmlGetAttr, "href")
 
-    snow.selected <- volunteer.data[volunteer.data$date == selected.date, ]
+  entries <- data.frame(site=fbs, sno=fb, link=hrefs, stringsAsFactors=FALSE)
+  entries$snow_depth_cm <- ifelse(grepl("cm", entries$sno), substr(entries$sno, 1, nchar(entries$sno) -3), 0.5)
 
-    #presence field
-    presence <- snow.selected$snow_depth_cm >= 1
-    absence <- snow.selected$snow_depth_cm <= 0
-    unknown <- snow.selected$snow_depth_cm > 0 & snow.selected$snow_depth_cm < 1
-    snow.selected$present[presence] <- 1
-    snow.selected$present[absence] <- 0
-    snow.selected$present[unknown] <- 2
-    coordinates(snow.selected) <- ~lon+lat
-    projection(snow.selected) <- CRS("+proj=longlat")
+  #getting coordinates
+  entries$lat <- NA
+  entries$lon <- NA
+  for (i in 1: nrow(entries)) {
+    link <- entries$link[i]
+    html2 <- htmlParse(GET(link))
+    imgsrc <- xpathSApply(html2, "//img", xmlGetAttr, "src")
+    imgmapka <- imgsrc[grepl("mapka", imgsrc)]
+    imgparts <- strsplit(imgmapka[[1]], "-")
+    numparts <- length(imgparts[[1]])
+    entries$lat[i] <- as.numeric(imgparts[[1]][numparts - 1])
+    entries$lon[i] <- as.numeric(imgparts[[1]][numparts])
+  }
+  entries$present <- entries$snow_depth_cm >= 1
 
-    if (UTM) {
-      snow_utm <- spTransform(snow.selected, CRS("+proj=utm +zone=33"))
-      return(snow_utm)
-    } else {
-      return(snow.selected)
-    }
+  coordinates(entries) <- ~lon+lat
+  projection(entries) <- CRS("+proj=longlat")
+
+  if (UTM) {
+    snow_utm <- spTransform(entries, CRS("+proj=utm +zone=33"))
+    return(snow_utm)
   } else {
-    return(data.frame())
+    return(entries)
   }
 }

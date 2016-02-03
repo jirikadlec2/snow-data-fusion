@@ -4,7 +4,7 @@
 #'
 #' @import raster
 #' @param modis The reclassified modis raster object
-#' @param stations The stations SpatialPointsDataFrame
+#' @param stations The stations SpatialPointsDataFrame (assumed UTM)
 #' @param reports the volunteer reports SpatialPointsDataFrame
 #' @param tracks the GPS tracks SpatialLinesDataFrame
 #' @param exponent the distance exponent for inverse distance
@@ -19,22 +19,33 @@ getSnowProbability <- function(modis, stations, reports, tracks, exponent = 3) {
   modis.absent[modis.absent == 0] <- NA
 
   #need to check that modis has some cloud-free pixels
-  use_modis <- TRUE
+  use_modis_abs <- TRUE
   if (is.infinite(cellStats(modis.absent, "max"))) {
-    use_modis <- FALSE
+    use_modis_abs <- FALSE
+  }
+  use_modis_prez <- TRUE
+  if (is.infinite(cellStats(modis.present, "max"))) {
+    use_modis_prez <- FALSE
   }
 
-  if (use_modis) {
+  if (use_modis_abs) {
     d.modis.abs <- distance(modis.absent)
+  }
+  if (use_modis_prez) {
     d.modis.prez <- distance(modis.present)
   }
 
   #stations
-  stations_utm <- spTransform(stations, CRS("+proj=utm +zone=33"))
-  stations.prez <- stations_utm[stations_utm$present == TRUE,]
-  stations.abs <- stations_utm[stations_utm$present == FALSE,]
+  if (!grepl("utm", proj4string(stations))) {
+    stations <- spTransform(stations, CRS("+proj=utm +zone=33"))
+  }
+  stations.prez <- stations[stations$present == TRUE,]
+  stations.abs <- stations[stations$present == FALSE,]
   d.station.abs <- distanceFromPoints(modis, stations.abs)
   d.station.prez <- distanceFromPoints(modis, stations.prez)
+  #inverse distance - stations
+  inv.d.station.abs <- 1 /(d.station.abs^exponent)
+  inv.d.station.prez <- 1 / (d.station.prez^exponent)
 
   #reports
   if (nrow(reports) > 0) {
@@ -61,17 +72,16 @@ getSnowProbability <- function(modis, stations, reports, tracks, exponent = 3) {
   }
 
   #inverse distance - modis
-  if (use_modis) {
+  if (use_modis_abs) {
     inv.d.modis.abs <- 1/(d.modis.abs^exponent)
-    inv.d.modis.prez <- 1/(d.modis.prez^exponent)
   } else {
     inv.d.modis.abs <- modis * 0
+  }
+  if (use_modis_prez) {
+    inv.d.modis.prez <- 1/(d.modis.prez^exponent)
+  } else {
     inv.d.modis.prez <- modis * 0
   }
-
-  #inverse distance - stations
-  inv.d.station.abs <- 1 /(d.station.abs^exponent)
-  inv.d.station.prez <- 1 / (d.station.prez^exponent)
 
   #weighed averages
   prez.conf <- inv.d.modis.prez + inv.d.station.prez + inv.d.report.prez + inv.d.track.prez

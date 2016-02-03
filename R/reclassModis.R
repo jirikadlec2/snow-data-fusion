@@ -9,12 +9,14 @@
 
 reclassModis <- function(modis, zero_threshold=10) {
   #assign 201 to snowy pixels
-  modis[modis > 100] <- 201
+  modis[modis > 100 + zero_threshold] <- 201
 
   #assign 200 to bare pixels
   modis[modis == 100] <- 200
   modis[modis == 0] <- 200
-  modis[modis < zero_threshold] <- 200
+
+  #set pixels below zero threshold to unknown
+  modis[modis > 100 & modis < 100 + zero_threshold] <- 202
 
   #assign 202 to cloudy pixels
   modis[modis < 200] <- 202

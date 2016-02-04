@@ -10,12 +10,13 @@
 #' @param cloudy_days a vector of selected cloudy dates for validation
 #' @param sunny_days a vector of selected cloud-free dates for validation
 #' @param dataFolder the data folder with MODIS rasters
+#' @param outputFile the output file name
 #' @param useReports determines if we should use the reports
 #' @param useTracks determines if we should use the tracks
 #' @return a data frame vector with sensitivity, specificity,
 #' false positive, false negative
 
-runValidation <- function(cloudy_days, sunny_days, dataFolder, useReports=TRUE, useTracks=TRUE) {
+runValidation <- function(cloudy_days, sunny_days, dataFolder, outputFile, useReports=TRUE, useTracks=TRUE) {
   validation_result <- data.frame()
   #cloud_file <- "C:/jiri/Dropbox/PHD/crowdsourcing/data/modis/cloud_percent.csv"
 
@@ -210,7 +211,7 @@ runValidation <- function(cloudy_days, sunny_days, dataFolder, useReports=TRUE, 
 
     }
   }
-  validation_result_file <- paste(dataFolder, "/validation", Sys.Date(), ".csv",sep="")
+  validation_result_file <- paste(dataFolder, "/validation", outputFile, Sys.Date(), ".csv",sep="")
   write.table(validation_result,
               validation_result_file,
               row.names=FALSE, col.names=TRUE, sep=",")
@@ -236,11 +237,13 @@ runValidation <- function(cloudy_days, sunny_days, dataFolder, useReports=TRUE, 
                                        auc.mean=AUCmean$AUC,
                                        auc.max=AUCmax$AUC)
 
-  validation_summary_file <- paste(dataFolder, "/validation-summary", Sys.Date(), ".csv",sep="")
+  validation_summary_file <- paste(dataFolder, "/", outputFile, "-summary", Sys.Date(), ".csv",sep="")
   write.table(validation_result_info, validation_summary_file, row.names=FALSE, col.names=TRUE, sep=",")
 
   #make boxplot
   vsummary1$trial <- rep(1:10, each=10)
   boxplot(PCC~trial, data=vsummary1, xlab='trial', ylab='PCC(%)')
+
+  return(list(vsummary=vsummary1, vresult=validation_result))
 
 }

@@ -10,12 +10,17 @@
 #' @param exponent the distance exponent for inverse distance
 #' @return the snow probability raster
 
-getSnowProbability <- function(modis, stations, reports, tracks, exponent = 3) {
+getSnowProbability <- function(modis, stations, reports = NULL, tracks = NULL, exponent = 3) {
 
   #modis
+  #reclassify and filter modis
+  modis_reclas <- reclassModis(modis)
+  modis_filter <- filterModis(modis)
+
   modis.present <- modis == 1
   modis.present[modis.present == 0] <- NA
-  modis.absent <- modis == 0 | modis == 100
+
+  modis.absent <- modis == 0
   modis.absent[modis.absent == 0] <- NA
 
   #need to check that modis has some cloud-free pixels
@@ -48,6 +53,9 @@ getSnowProbability <- function(modis, stations, reports, tracks, exponent = 3) {
   inv.d.station.prez <- 1 / (d.station.prez^exponent)
 
   #reports
+  if (is.null(reports)) {
+    reports <- data.frame()
+  }
   if (nrow(reports) > 0) {
     reports_utm <- spTransform(reports, CRS("+proj=utm +zone=33"))
     reports.prez <- reports_utm[reports_utm$present == 1,]
@@ -62,10 +70,14 @@ getSnowProbability <- function(modis, stations, reports, tracks, exponent = 3) {
   }
 
   #tracks
+  if (is.null(tracks)) {
+    tracks <- data.frame()
+  }
   if (nrow(tracks) > 0) {
-    tracks_utm <- spTransform(tracks, CRS("+proj=utm +zone=33"))
-    track.ras <- rasterize(tracks, modis)
-    d.track.prez <- distance(track.ras)
+    track_points <- sampleTrackPoints(tracks)
+    #tracks_utm <- spTransform(tracks, CRS("+proj=utm +zone=33"))
+    #track.ras <- rasterize(tracks, modis)
+    d.track.prez <- distanceFromPoints(modis, track_points)
     inv.d.track.prez <- 1 / (d.track.prez^exponent)
   } else {
     inv.d.track.prez <- modis * 0
@@ -85,8 +97,9 @@ getSnowProbability <- function(modis, stations, reports, tracks, exponent = 3) {
 
   #weighed averages
   prez.conf <- inv.d.modis.prez + inv.d.station.prez + inv.d.report.prez + inv.d.track.prez
-  prez.abs.conf <- inv.d.modis.abs + inv.d.station.abs + inv.d.report.abs + inv.d.modis.prez + inv.d.station.prez + inv.d.report.prez + inv.d.track.prez
-  conf <- prez.conf / prez.abs.conf
+  abs.conf <- inv.d.modis.abs + inv.d.station.abs + inv.d.report.abs
+
+  conf <- prez.conf / (prez.conf + abs.conf)
   conf[is.na(conf)] <- 1
 
   return(conf)

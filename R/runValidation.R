@@ -10,10 +10,12 @@
 #' @param cloudy_days a vector of selected cloudy dates for validation
 #' @param sunny_days a vector of selected cloud-free dates for validation
 #' @param dataFolder the data folder with MODIS rasters
+#' @param useReports determines if we should use the reports
+#' @param useTracks determines if we should use the tracks
 #' @return a data frame vector with sensitivity, specificity,
 #' false positive, false negative
 
-runValidation <- function(cloudy_days, sunny_days, dataFolder) {
+runValidation <- function(cloudy_days, sunny_days, dataFolder, useReports=TRUE, useTracks=TRUE) {
   validation_result <- data.frame()
   #cloud_file <- "C:/jiri/Dropbox/PHD/crowdsourcing/data/modis/cloud_percent.csv"
 
@@ -29,7 +31,7 @@ runValidation <- function(cloudy_days, sunny_days, dataFolder) {
     for(cloudyDate in cloudy_days) {
       print(paste("validation for", originalDate, cloudyDate))
 
-      err <- tryCatch({
+      #err <- tryCatch({
 
         originalFile <- paste(dataFolder, "/", "modis", originalDate, ".tif", sep="")
         cloudyFile <- paste(dataFolder, "/", "modis", cloudyDate, ".tif", sep="")
@@ -89,7 +91,9 @@ runValidation <- function(cloudy_days, sunny_days, dataFolder) {
 
         stations <- getStations(originalDate)
         reports <- getReports(originalDate)
+
         tracks <- getTracks(originalDate)
+        trackPoints <- sampleTrackPoints(tracks)
         points(stations)
 
         # plot also with the stations, points, tracks
@@ -113,7 +117,13 @@ runValidation <- function(cloudy_days, sunny_days, dataFolder) {
                cex=0.7,
                horiz=TRUE)
 
-
+        #check for useReports, useTracks
+        if (!useReports) {
+          reports <- data.frame()
+        }
+        if (!useTracks) {
+          tracks <- data.frame()
+        }
 
         prob <- getSnowProbability(modisCloud, stations, reports, tracks)
         prob_cze <- mask(prob, studyArea)
@@ -144,18 +154,21 @@ runValidation <- function(cloudy_days, sunny_days, dataFolder) {
         probReal <- mask(probReal, studyArea)
 
         #remove cloud-covered areas from probReal: we don't test for them
-        probReal[probReal == 2] <- 0
+        probReal[probReal == 2] <- NA
 
-        testDF <- as.data.frame(probTest)
-        realDF <- as.data.frame(probReal)
-        comparisonDF <- cbind(testDF, realDF)
+        plot(probTest, main="probTest")
+        plot(probReal, main="probReal")
+
+        testVals <- values(probTest)
+        realVals <- values(probReal)
+        comparisonDF <- data.frame(observed=realVals, predicted=testVals)
         validationDF <- comparisonDF[complete.cases(comparisonDF),]
 
         predictedFile <- paste("predicted", originalDate, cloudyDate, "r.tif", sep="_")
-        writeRaster(prob, paste(dataFolder, predictedFile, sep="/"))
+        writeRaster(prob, paste(dataFolder, predictedFile, sep="/"), overwrite=TRUE)
 
-        validation <- data.frame(id=1:nrow(validationDF), observed=validationDF[,2],
-                                 predicted=validationDF[,1])
+        validation <- data.frame(id=1:nrow(validationDF), observed=validationDF$observed,
+                                 predicted=validationDF$predicted)
         rocFile <- paste("roc", originalDate, cloudyDate, "r.png", sep="_")
 
         #to save PNG image of the ROC file
@@ -190,9 +203,10 @@ runValidation <- function(cloudy_days, sunny_days, dataFolder) {
 
 
         validation_result <- rbind(validation_result, result)
-      },error = function(e) {
-        print(conditionMessage(e))
-      })
+
+        #},error = function(e) {
+        #print(conditionMessage(e))
+      #})
 
     }
   }

@@ -94,7 +94,6 @@ runValidation <- function(cloudy_days, sunny_days, dataFolder, outputFile, useRe
         reports <- getReports(originalDate)
 
         tracks <- getTracks(originalDate)
-        trackPoints <- sampleTrackPoints(tracks)
         points(stations)
 
         # plot also with the stations, points, tracks

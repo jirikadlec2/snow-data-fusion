@@ -9,6 +9,11 @@
 
 sampleTrackPoints <- function(tracks, pointSpacing=5000) {
 
+  # checking for number of rows
+  if (nrow(tracks) == 0) {
+    return(data.frame())
+  }
+
   # track lengths
   trackLengths <- SpatialLinesLengths(tracks)
   pointsPerTrack <- ceiling(trackLengths / pointSpacing)

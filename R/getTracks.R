@@ -13,9 +13,9 @@ getTracks <- function(selected.date, UTM=TRUE) {
   out_tracks_strava <- data.frame()
   out_tracks_garmin <- data.frame()
 
-  new_track_file <- "strava_tracks_saved.shp"
+  new_track_file <- "strava_tracks_saved2.shp"
   if (!file.exists(new_track_file)) {
-    resource_id <- "7d8751fef6234ae794b4b1ca31156b8f"
+    resource_id <- "7f1c480ef2c44657a0918c8207bdf662"
     resource_uri <- paste("http://hydroshare.org/hsapi/resource/", resource_id, sep="")
     track_file <- "strava.zip"
     GET(resource_uri, write_disk(track_file, overwrite=TRUE))
@@ -25,9 +25,9 @@ getTracks <- function(selected.date, UTM=TRUE) {
     shpfolder <- substr(shpfile, 1, nchar(shpfile) - nchar(basename(shpfile)) - 1)
     shpname <- substr(basename(shpfile), 1, nchar(basename(shpfile)) - 4)
     tracks <- readOGR(shpfolder, shpname, stringsAsFactors = FALSE, verbose = FALSE)
-    writeOGR(tracks, ".", "strava_tracks_saved", driver="ESRI Shapefile")
+    writeOGR(tracks, ".", "strava_tracks_saved2", driver="ESRI Shapefile")
   } else {
-    tracks <- readOGR(".", "strava_tracks_saved", stringsAsFactors = FALSE, verbose = FALSE)
+    tracks <- readOGR(".", "strava_tracks_saved2", stringsAsFactors = FALSE, verbose = FALSE)
   }
   Ntracks <- length(which(tracks$begdate == selected.date))
   if (Ntracks > 0) {
@@ -43,9 +43,9 @@ getTracks <- function(selected.date, UTM=TRUE) {
     out_tracks_strava <- data.frame()
   }
 
-  garmin_track_file <- "garmin_tracks_saved.shp"
+  garmin_track_file <- "garmin_tracks_saved2.shp"
   if (!file.exists(garmin_track_file)) {
-    resource_id <- "d96b094c6afa4e8fb147e3aa8c86a689"
+    resource_id <- "da453fdbd4e54876b4dc2be2b7ca4e00"
     resource_uri <- paste("http://hydroshare.org/hsapi/resource/", resource_id, sep="")
     track_file <- "garmin.zip"
     GET(resource_uri, write_disk(track_file, overwrite=TRUE))
@@ -55,9 +55,9 @@ getTracks <- function(selected.date, UTM=TRUE) {
     shpfolder <- substr(shpfile, 1, nchar(shpfile) - nchar(basename(shpfile)) - 1)
     shpname <- substr(basename(shpfile), 1, nchar(basename(shpfile)) - 4)
     garmin_tracks <- readOGR(shpfolder, shpname, stringsAsFactors = FALSE)
-    writeOGR(garmin_tracks, ".", "garmin_tracks_saved", driver="ESRI Shapefile")
+    writeOGR(garmin_tracks, ".", "garmin_tracks_saved2", driver="ESRI Shapefile")
   } else {
-    garmin_tracks <- readOGR(".", "garmin_tracks_saved", stringsAsFactors=FALSE, verbose = FALSE)
+    garmin_tracks <- readOGR(".", "garmin_tracks_saved2", stringsAsFactors=FALSE, verbose = FALSE)
   }
   NtracksGarmin <- length(which(garmin_tracks$begdate == selected.date))
   if (NtracksGarmin > 0) {

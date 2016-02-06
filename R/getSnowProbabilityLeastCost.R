@@ -123,7 +123,6 @@ getSnowProbabilityLeastCost <- function(tr, modis, stations, reports = NULL, tra
 
   # for each ABSENT MODIS do the COST #
   if (nrow(modisPoints_abs) > 0) {
-    print(paste("nrow modis points abs"), nrow(modisPoints_abs))
     costModAbs <- getNearestCostDistance(tr, modisPoints_abs, tocoords)
     plot(costModAbs)
     points(modisPoints_abs)

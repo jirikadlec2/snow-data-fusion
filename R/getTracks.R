@@ -4,11 +4,12 @@
 #' @import httr
 #' @import rgdal
 #' @import sp
-#' @param selected.date The date of the satellite observation
+#' @param selected.date The date of the track observations.
+#' If NULL then all tracks are returned.
 #' @param UTM if TRUE then transform output to WGS84 UTM Zone 33 N
 #' @return a SpatialPointsDataFrame with the tracks.
 
-getTracks <- function(selected.date, UTM=TRUE) {
+getTracks <- function(selected.date=NULL, UTM=TRUE) {
 
   out_tracks_strava <- data.frame()
   out_tracks_garmin <- data.frame()
@@ -29,10 +30,19 @@ getTracks <- function(selected.date, UTM=TRUE) {
   } else {
     tracks <- readOGR(".", "strava_tracks_saved2", stringsAsFactors = FALSE, verbose = FALSE)
   }
-  Ntracks <- length(which(tracks$begdate == selected.date))
+  if (!is.null(selected.date)) {
+    Ntracks <- length(which(tracks$begdate == selected.date))
+  } else {
+    Ntracks <- nrow(tracks)
+  }
+
   if (Ntracks > 0) {
-    sel.tracks <- tracks[tracks$begdate == selected.date,]
-    proj4string(sel.tracks) <- CRS("+proj=longlat")
+    if (!is.null(selected.date)) {
+      sel.tracks <- tracks[tracks$begdate == selected.date,]
+    } else {
+      sel.tracks <- tracks
+    }
+
     if (UTM) {
       tracks_utm <- spTransform(sel.tracks, CRS("+proj=utm +zone=33"))
       out_tracks_strava <- tracks_utm
@@ -42,6 +52,14 @@ getTracks <- function(selected.date, UTM=TRUE) {
   } else {
     out_tracks_strava <- data.frame()
   }
+
+  #changing Strava track ID's
+  ids <- c()
+  for(i in 1: nrow(out_tracks_strava)) {
+    ids <- c(ids, out_tracks_strava@lines[[i]]@ID)
+  }
+  new_ids <- as.character(as.numeric(ids) + 50000)
+  out_tracks_strava <- spChFIDs(out_tracks_strava, new_ids)
 
   garmin_track_file <- "garmin_tracks_saved2.shp"
   if (!file.exists(garmin_track_file)) {
@@ -59,9 +77,17 @@ getTracks <- function(selected.date, UTM=TRUE) {
   } else {
     garmin_tracks <- readOGR(".", "garmin_tracks_saved2", stringsAsFactors=FALSE, verbose = FALSE)
   }
-  NtracksGarmin <- length(which(garmin_tracks$begdate == selected.date))
+  if (is.null(selected.date)) {
+    NtracksGarmin <- nrow(garmin_tracks)
+  } else {
+    NtracksGarmin <- length(which(garmin_tracks$begdate == selected.date))
+  }
   if (NtracksGarmin > 0) {
-    sel.tracks.garmin <- garmin_tracks[garmin_tracks$begdate == selected.date,]
+    if (!is.null(selected.date)){
+      sel.tracks.garmin <- garmin_tracks[garmin_tracks$begdate == selected.date,]
+    } else {
+      sel.tracks.garmin <- garmin_tracks
+    }
     if (UTM) {
       garmin_tracks_utm <- spTransform(sel.tracks.garmin, CRS("+proj=utm +zone=33"))
       out_tracks_garmin <- garmin_tracks_utm

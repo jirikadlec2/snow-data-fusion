@@ -15,7 +15,6 @@ sampleModisPoints <- function(modis, sampleFromCategory, pixelsPerPoint=400) {
   validCells <- length(which(!is.na(values(modis))))
   nPoints <- floor(validCells / pixelsPerPoint)
   if (nPoints == 0) {
-    print(paste("nPoints:", nPoints))
     return(data.frame())
   } else {
     samplePoints <- sampleRandom(modis, nPoints, sp=TRUE)

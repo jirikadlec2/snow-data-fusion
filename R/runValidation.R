@@ -24,10 +24,10 @@ runValidation <- function(cloudy_days, sunny_days, dataFolder, outputFile, useRe
   cloudyDate <- cloudy_days[1]
 
   # magnifying elevation effect by exponent
-  dem <- raster("C:/jiri/Dropbox/PHD/crowdsourcing/data/DEM/dem_utm_500m.tif")
-  transition_exponent <- 1.5
-  tr <- transition(dem, function(x) {1 / (mean(x))^transition_exponent}, 8)
-  tr <- geoCorrection(tr)
+  #dem <- raster("C:/jiri/Dropbox/PHD/crowdsourcing/data/DEM/dem_utm_500m.tif")
+  #transition_exponent <- 1.5
+  #tr <- transition(dem, function(x) {1 / (mean(x))^transition_exponent}, 8)
+  #tr <- geoCorrection(tr)
 
   for(originalDate in sunny_days) {
     for(cloudyDate in cloudy_days) {

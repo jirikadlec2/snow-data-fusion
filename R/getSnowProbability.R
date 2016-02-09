@@ -10,17 +10,17 @@
 #' @param exponent the distance exponent for inverse distance
 #' @return the snow probability raster
 
-getSnowProbability <- function(modis, stations, reports = NULL, tracks = NULL, exponent = 3) {
+getSnowProbability <- function(modis, stations, reports = data.frame(), tracks = data.frame(), exponent = 3) {
 
   #modis
   #reclassify and filter modis
   modis_reclas <- reclassModis(modis)
   modis_filter <- filterModis(modis)
 
-  modis.present <- modis == 1
+  modis.present <- modis_filter == 1
   modis.present[modis.present == 0] <- NA
 
-  modis.absent <- modis == 0
+  modis.absent <- modis_filter == 0
   modis.absent[modis.absent == 0] <- NA
 
   #need to check that modis has some cloud-free pixels
@@ -33,11 +33,24 @@ getSnowProbability <- function(modis, stations, reports = NULL, tracks = NULL, e
     use_modis_prez <- FALSE
   }
 
+  # read samples from MODIS
+  modisPoints_prez <- data.frame()
+  modisPoints_abs <- data.frame()
+
+  if (use_modis_prez) {
+    modisPoints_prez <- sampleModisPoints(modis_filter, 1)
+    plot(modisPoints_prez, add=TRUE)
+  }
   if (use_modis_abs) {
-    d.modis.abs <- distance(modis.absent)
+    modisPoints_abs <- sampleModisPoints(modis_filter, 0)
+    points(modisPoints_abs)
+  }
+
+  if (use_modis_abs) {
+    d.modis.abs <- distanceFromPoints(modis, modisPoints_abs)
   }
   if (use_modis_prez) {
-    d.modis.prez <- distance(modis.present)
+    d.modis.prez <- distanceFromPoints(modis, modisPoints_prez)
   }
 
   #stations
@@ -75,8 +88,6 @@ getSnowProbability <- function(modis, stations, reports = NULL, tracks = NULL, e
   }
   if (nrow(tracks) > 0) {
     track_points <- sampleTrackPoints(tracks)
-    #tracks_utm <- spTransform(tracks, CRS("+proj=utm +zone=33"))
-    #track.ras <- rasterize(tracks, modis)
     d.track.prez <- distanceFromPoints(modis, track_points)
     inv.d.track.prez <- 1 / (d.track.prez^exponent)
   } else {

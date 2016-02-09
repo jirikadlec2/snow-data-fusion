@@ -14,6 +14,9 @@ sampleModisPoints <- function(modis, sampleFromCategory, pixelsPerPoint=400) {
   modis[modis != sampleFromCategory] <- NA
   validCells <- length(which(!is.na(values(modis))))
   nPoints <- floor(validCells / pixelsPerPoint)
+  if (nPoints == 0 & validCells > 0) {
+    nPoints <- 1
+  }
   if (nPoints == 0) {
     return(data.frame())
   } else {

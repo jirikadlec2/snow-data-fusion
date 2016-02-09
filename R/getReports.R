@@ -25,6 +25,10 @@ getReports <- function(selected.date, UTM=TRUE) {
   fbs <- xpathSApply(html, "//a[@class='tooltip']//strong", xmlValue)
   hrefs <- xpathSApply(html, "//a[@class='tooltip']", xmlGetAttr, "href")
 
+  if (length(hrefs) == 0) {
+    return(data.frame())
+  }
+
   entries <- data.frame(site=fbs, sno=fb, link=hrefs, stringsAsFactors=FALSE)
   entries$snow_depth_cm <- ifelse(grepl("cm", entries$sno), substr(entries$sno, 1, nchar(entries$sno) -3), 0.5)
 
@@ -44,7 +48,7 @@ getReports <- function(selected.date, UTM=TRUE) {
   entries$present <- entries$snow_depth_cm >= 1
 
   coordinates(entries) <- ~lon+lat
-  projection(entries) <- CRS("+proj=longlat")
+  proj4string(entries) <- CRS("+proj=longlat")
 
   if (UTM) {
     snow_utm <- spTransform(entries, CRS("+proj=utm +zone=33"))

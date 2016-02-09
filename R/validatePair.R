@@ -72,9 +72,17 @@ validatePair <- function(originalDate, cloudyDate, studyArea, dataFolder=".", us
          fill = snow_colors, cex=0.7, horiz=TRUE)
 
   stations <- getStations(originalDate)
-  reports <- getReports(originalDate)
-  tracks <- getTracks(originalDate)
 
+  if (useReports) {
+    reports <- getReports(originalDate)
+  } else {
+    reports <- data.frame()
+  }
+  if (useTracks) {
+    tracks <- getTracks(originalDate)
+  } else {
+    tracks <- data.frame()
+  }
 
   points(stations)
 
@@ -85,7 +93,9 @@ validatePair <- function(originalDate, cloudyDate, studyArea, dataFolder=".", us
     lines(tracks, col="red")
   }
   points(stations, pch=1)
-  points(reports, pch=16)
+  if (nrow(reports) > 0) {
+    points(reports, pch=16)
+  }
   legend_x = bbox(originalR_cze)[1,1]+100000
   legend_y = bbox(originalR_cze)[2,2]
   legend_y2 = bbox(originalR_cze)[2,1]
@@ -101,14 +111,8 @@ validatePair <- function(originalDate, cloudyDate, studyArea, dataFolder=".", us
          cex=0.7,
          horiz=TRUE)
 
-  if (!useReports) {
-    reports <- data.frame()
-  }
-  if (!useTracks) {
-    tracks <- data.frame()
-  }
-
-  prob <- getSnowProbabilityLeastCost(tr, modisCloud, stations, reports, tracks)
+  prob <- getSnowProbability(modisCloud, stations, reports, tracks)
+  #prob <- getSnowProbabilityLeastCost(tr, modisCloud, stations, reports, tracks)
   prob_cze <- mask(prob, studyArea)
 
   prob_colors <- brewer.pal(7, "Blues")
